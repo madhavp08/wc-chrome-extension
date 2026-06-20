@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Ref Watch",
+  "version": "0.1.0",
+  "description": "Quick poll on controversial referee calls.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Was that red card necessary?"
+  },
+  "host_permissions": ["https://*.supabase.co/*"]
+}
