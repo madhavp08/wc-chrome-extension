@@ -1,5 +1,6 @@
+importScripts("config.js");
+
 const ALARM_NAME = "ref-watch-poll";
-let pollWindowId = null;
 
 chrome.runtime.onInstalled.addListener(syncAlarm);
 chrome.runtime.onStartup.addListener(syncAlarm);
@@ -12,13 +13,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === ALARM_NAME) {
-    openPollWindow();
+    pollActiveTab();
   }
 });
 
-chrome.windows.onRemoved.addListener((id) => {
-  if (id === pollWindowId) {
-    pollWindowId = null;
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === "vote") {
+    submitVote(msg.choice)
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
   }
 });
 
@@ -31,20 +35,34 @@ async function syncAlarm() {
   }
 }
 
-async function openPollWindow() {
-  if (pollWindowId !== null) {
-    try {
-      await chrome.windows.remove(pollWindowId);
-    } catch (e) {}
-    pollWindowId = null;
+async function pollActiveTab() {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (!tab || !tab.id) return;
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: "showPoll" });
+  } catch (e) {}
+}
+
+async function submitVote(choice) {
+  const { url, anonKey, table } = SUPABASE_CONFIG;
+
+  const headers = {
+    apikey: anonKey,
+    "Content-Type": "application/json",
+    Prefer: "return=minimal"
+  };
+  if (anonKey.startsWith("ey")) {
+    headers.Authorization = `Bearer ${anonKey}`;
   }
 
-  const win = await chrome.windows.create({
-    url: "poll.html",
-    type: "popup",
-    width: 320,
-    height: 220,
-    focused: true
+  const res = await fetch(`${url}/rest/v1/${table}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ question: POLL.question, choice })
   });
-  pollWindowId = win.id;
+
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Save failed (${res.status}): ${detail}`);
+  }
 }

@@ -13,6 +13,6 @@ checkbox.addEventListener("change", () => {
 
 function render() {
   stateEl.textContent = checkbox.checked
-    ? "On. A poll pops up every minute."
+    ? "On. A poll appears on your page every minute."
     : "Off.";
 }

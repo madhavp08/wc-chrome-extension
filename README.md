@@ -1,23 +1,27 @@
 # Ref Watch (MVP)
 
-A minimal Chrome extension that, while turned on, pops up a question about a
-referee's call every minute, gives the user 10 seconds to pick **Yes** or **No**,
-and stores only the final choice in a Supabase table.
+A minimal Chrome extension that, while turned on, shows a poll about a referee's
+call on the page you are viewing every minute, gives you 10 seconds to pick **Yes**
+or **No**, and stores only the final choice in a Supabase table.
 
 ## How it works
 
 Clicking the toolbar icon opens a small control panel with a single on/off toggle.
-While the toggle is on, a background service worker runs a one-minute alarm, and on
-each tick it opens a small plain white poll window with the question and two
-buttons. The user can change their pick freely. After 10 seconds the window
-auto-submits whatever option is currently selected to Supabase and then closes
-itself. If nothing is selected, nothing is stored. There is no animated countdown;
-the window just states that 10 seconds are available, which keeps the code simple.
+While the toggle is on, a background service worker (`background.js`) runs a
+one-minute alarm. On each tick it asks the page you are currently viewing to draw a
+small white poll card on top of that page (an in-page overlay from `content.js`)
+with the question and two buttons. You can change your pick freely. After 10
+seconds the overlay auto-submits whatever option is selected and then disappears.
+If nothing is selected, nothing is stored. There is no animated countdown; the
+overlay just states that 10 seconds are available, which keeps the code simple.
 
-A toolbar popup cannot reliably open itself on a timer in Chrome, so the poll is
-shown as its own small window opened by the service worker. This works regardless
-of which website is in front. The first poll appears one minute after you turn the
-toggle on.
+The poll only appears on the page that is active when the minute ticks. If that
+page cannot host an overlay (such as a `chrome://` page, the Chrome Web Store, or
+the new-tab page), that round is skipped rather than queued for later.
+
+The overlay only collects the choice. The actual save to Supabase is performed by
+the service worker, which keeps the network call out of the web page and avoids the
+cross-origin restrictions a page-level request can hit.
 
 ## 1. Create the Supabase table
 
@@ -40,18 +44,19 @@ create policy "anon can insert votes"
 ```
 
 Row level security is enabled and only an `insert` policy is granted to the
-anonymous role. The anon key is therefore safe to ship in the extension: anyone
-holding it can add a vote but cannot read or modify existing rows.
+anonymous role. The key in the extension is therefore safe to ship: anyone holding
+it can add a vote but cannot read or modify existing rows.
 
 ## 2. Add your credentials
 
-Open `config.js` and replace the placeholders with your project's URL and anon key
-(Supabase dashboard → Project Settings → API):
+Open `config.js` and set your project's URL and key (Supabase dashboard → Project
+Settings → API Keys). The code accepts either the new publishable key
+(`sb_publishable_...`) or the legacy `anon` JWT key (`eyJ...`):
 
 ```js
 const SUPABASE_CONFIG = {
   url: "https://your-project.supabase.co",
-  anonKey: "your-anon-key",
+  anonKey: "your-key",
   table: "votes"
 };
 ```
@@ -61,16 +66,30 @@ const SUPABASE_CONFIG = {
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode**.
 3. Click **Load unpacked** and select this folder.
-4. Click the Ref Watch icon in the toolbar to open the popup.
+4. Click the Ref Watch icon and switch the toggle on.
 
-When you are ready to share it, the same folder is what you upload to the Chrome
-Web Store.
+After loading or reloading the extension, reload any web page you already had open
+so the overlay script is injected into it. Then the first poll appears one minute
+after you turn the toggle on.
+
+## Viewing votes
+
+In the Supabase dashboard, open Table Editor and select the `votes` table, or run
+this in the SQL Editor for a tally:
+
+```sql
+select choice, count(*)
+from votes
+group by choice
+order by count(*) desc;
+```
 
 ## Known MVP limits
 
-- The poll is a separate small window, so it works no matter which site is in
-  front, but it does steal focus for a moment when it appears.
-- Chrome alarms fire at a minimum interval of one minute, which is exactly what we
-  use here.
+- The overlay appears only on the active tab at the moment the minute ticks; other
+  rounds for non-overlay pages are skipped.
+- A freshly loaded or reloaded extension only injects its overlay into pages opened
+  or refreshed afterward.
+- Chrome alarms fire at a minimum interval of one minute, which is what we use.
 - The question, the option labels, and the 10-second timer all live in `config.js`
   so they are easy to change.
