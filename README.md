@@ -24,19 +24,18 @@ are not shown a backlog of earlier events.
 
 ## Data source
 
-This uses [API-Football](https://www.api-football.com) (api-sports.io). Its free
-tier covers the FIFA World Cup (`league = 1`, `season = 2026`) with goals, cards,
-substitutions, and VAR events updated every 15 seconds, and needs no credit card.
-We trigger on cards and VAR — the genuinely controversial referee decisions —
-because individual fouls and live text commentary are not available on free or
-affordable feeds. The provider is isolated in `config.js` and `background.js`, so it
-can be swapped later for a richer paid feed.
+This uses [API-Football](https://www.api-football.com) (api-sports.io) for the FIFA
+World Cup (`league = 1`, `season = 2026`), reading goals, cards, substitutions, and
+VAR events updated every 15 seconds. We trigger on cards and VAR — the genuinely
+controversial referee decisions — because individual fouls and live text commentary
+are not available on free or affordable feeds. The provider is isolated in
+`config.js` and `background.js`, so it can be swapped later for a richer feed.
 
-Note the free quota: API-Football's free plan allows 100 requests/day. We cache the
-live fixture id and poll about once every two minutes, so a single ~2-hour match
-fits within the daily limit. Developing/testing also consumes this quota, so expect
-to run out if you poll heavily in one day; upgrading the plan (no code change needed)
-raises the limit.
+A paid plan is required: API-Football's free plan is historical only (seasons
+2022–2024) and cannot read the live current season, so it returns an empty result
+for `season = 2026`. Any paid tier (cheapest is Pro) unlocks all seasons. With a
+paid plan the daily request limit is generous, so we cache the live fixture id and
+poll every 20 seconds (`pollSeconds`) for near-real-time pop-ups.
 
 ## 1. Supabase table
 

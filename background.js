@@ -60,11 +60,11 @@ async function findLiveFixture() {
   const url = `${base}/fixtures?league=${league}&season=${season}&live=all`;
 
   const res = await fetch(url, { headers: { "x-apisports-key": key } });
-  if (!res.ok) return null;
+  const json = await res.json().catch(() => null);
+  const list = json && Array.isArray(json.response) ? json.response : [];
 
-  const json = await res.json();
-  const list = Array.isArray(json.response) ? json.response : [];
-  return list.length ? list[0].fixture.id : null;
+  if (!res.ok || !list.length) return null;
+  return list[0].fixture.id;
 }
 
 async function fetchFixture(id) {
@@ -72,11 +72,11 @@ async function fetchFixture(id) {
   const url = `${base}/fixtures?id=${id}`;
 
   const res = await fetch(url, { headers: { "x-apisports-key": key } });
-  if (!res.ok) return null;
+  const json = await res.json().catch(() => null);
+  const list = json && Array.isArray(json.response) ? json.response : [];
 
-  const json = await res.json();
-  const list = Array.isArray(json.response) ? json.response : [];
-  return list.length ? list[0] : null;
+  if (!res.ok || !list.length) return null;
+  return list[0];
 }
 
 function buildPoll(event) {

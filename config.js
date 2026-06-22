@@ -9,7 +9,7 @@ const APIFOOTBALL_CONFIG = {
   base: "https://v3.football.api-sports.io",
   league: 1,
   season: 2026,
-  pollSeconds: 120,
+  pollSeconds: 20,
   triggerTypes: ["Card", "Var"],
   finishedStatuses: ["FT", "AET", "PEN"]
 };
