@@ -1,11 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Ref Watch",
-  "version": "0.5.0",
-  "description": "Quick poll on controversial referee calls during World Cup matches.",
+  "name": "VARdict",
+  "version": "1.0.0",
+  "description": "Vote on controversial calls in real time.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Ref Watch"
+    "default_title": "VARdict",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "background": {
     "service_worker": "background.js"

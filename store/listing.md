@@ -1,15 +1,14 @@
-# Chrome Web Store listing — Ref Watch
+# Chrome Web Store listing — VARdict
 
-> Placeholder name/branding until the rebrand. Update name, icon, and screenshots
-> before final submission.
+> Add screenshots before final submission.
 
 ## Name
 
-Ref Watch
+VARdict
 
 ## Summary (max 132 characters)
 
-Vote Yes or No on controversial referee calls — cards and VAR — live during World Cup matches.
+Vote on controversial calls in real time.
 
 ## Category
 
