@@ -17,5 +17,6 @@ const APIFOOTBALL_CONFIG = {
 const POLL = {
   options: ["Yes", "No"],
   decisionSeconds: 20,
-  confirmSeconds: 5
+  confirmSeconds: 5,
+  resultsThreshold: 1
 };

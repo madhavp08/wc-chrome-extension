@@ -1,31 +1,46 @@
 let overlayEl = null;
-let selected = null;
-let currentQuestion = "";
+let queue = [];
+let votedQuestions = [];
+let busy = false;
 
 const CARD_BG = "#121212";
+const YES_COLOR = "#00b86b";
+const NO_COLOR = "#e5342b";
+
+const MAX_QUEUE = 3;
+const RESULTS_WAIT_MS = 20000;
+const RESULTS_POLL_MS = 5000;
+const RESULTS_SHOW_MS = 6000;
 
 setInterval(tick, APIFOOTBALL_CONFIG.pollSeconds * 1000);
 
 function tick() {
-  if (document.hidden || overlayEl) return;
+  if (document.hidden || overlayEl || busy) return;
   if (!chrome.runtime || !chrome.runtime.id) return;
   try {
     chrome.runtime.sendMessage({ type: "checkEvents" }, (res) => {
       if (chrome.runtime.lastError) return;
-      if (res && res.show && res.poll) showOverlay(res.poll);
+      const polls = res && Array.isArray(res.polls) ? res.polls : [];
+      if (!polls.length) return;
+      queue = polls.slice(-MAX_QUEUE);
+      votedQuestions = [];
+      busy = true;
+      processNext();
     });
   } catch (e) {}
 }
 
-function showOverlay(poll) {
-  if (overlayEl) return;
-  selected = null;
-  currentQuestion = poll.question;
-  let finalized = false;
-  let confirmTimer = null;
+function processNext() {
+  if (queue.length) {
+    showPoll(queue.shift());
+  } else {
+    showResults();
+  }
+}
 
-  overlayEl = document.createElement("div");
-  Object.assign(overlayEl.style, {
+function makeCard() {
+  const el = document.createElement("div");
+  Object.assign(el.style, {
     position: "fixed",
     top: "18px",
     left: "50%",
@@ -40,39 +55,50 @@ function showOverlay(poll) {
     fontFamily: "-apple-system, system-ui, sans-serif",
     color: "#ffffff"
   });
-
   const content = document.createElement("div");
   Object.assign(content.style, {
     padding: "20px",
-    minHeight: "180px",
+    minHeight: "150px",
     boxSizing: "border-box"
   });
-  overlayEl.appendChild(content);
+  el.appendChild(content);
+  return { el, content };
+}
 
-  const question = document.createElement("div");
-  question.textContent = currentQuestion;
-  Object.assign(question.style, {
+function div(parent, text, styles) {
+  const d = document.createElement("div");
+  if (text) d.textContent = text;
+  Object.assign(d.style, styles || {});
+  parent.appendChild(d);
+  return d;
+}
+
+function clearOverlay() {
+  if (overlayEl && overlayEl.parentNode) {
+    overlayEl.parentNode.removeChild(overlayEl);
+  }
+  overlayEl = null;
+}
+
+function showPoll(poll) {
+  let selected = null;
+  let finalized = false;
+  let confirmTimer = null;
+
+  const { el, content } = makeCard();
+  overlayEl = el;
+
+  div(content, poll.question, {
     fontSize: "18px",
     fontWeight: "700",
     lineHeight: "1.3",
     marginBottom: poll.context ? "8px" : "16px"
   });
-  content.appendChild(question);
-
   if (poll.context) {
-    const context = document.createElement("div");
-    context.textContent = poll.context;
-    Object.assign(context.style, {
-      fontSize: "12px",
-      color: "#888888",
-      marginBottom: "16px"
-    });
-    content.appendChild(context);
+    div(content, poll.context, { fontSize: "12px", color: "#888888", marginBottom: "16px" });
   }
 
-  const row = document.createElement("div");
-  Object.assign(row.style, { display: "flex", gap: "10px" });
-  content.appendChild(row);
+  const row = div(content, "", { display: "flex", gap: "10px" });
 
   const buttons = POLL.options.map((label) => {
     const btn = document.createElement("button");
@@ -103,26 +129,19 @@ function showOverlay(poll) {
     return btn;
   });
 
-  const note = document.createElement("div");
-  note.textContent = `You have ${POLL.decisionSeconds} seconds to decide.`;
-  Object.assign(note.style, {
+  const note = div(content, `You have ${POLL.decisionSeconds} seconds to decide.`, {
     marginTop: "16px",
     fontSize: "12px",
     color: "#888888"
   });
-  content.appendChild(note);
-
-  const status = document.createElement("div");
-  Object.assign(status.style, {
+  const status = div(content, "", {
     marginTop: "8px",
     fontSize: "13px",
     fontWeight: "600",
     minHeight: "16px"
   });
-  content.appendChild(status);
 
-  document.body.appendChild(overlayEl);
-
+  document.body.appendChild(el);
   const maxTimer = setTimeout(finalize, POLL.decisionSeconds * 1000);
 
   function finalize() {
@@ -133,33 +152,117 @@ function showOverlay(poll) {
     buttons.forEach((b) => (b.disabled = true));
 
     if (selected === null) {
-      note.textContent = "Time's up. No option selected.";
-      removeSoon();
+      clearOverlay();
+      processNext();
       return;
     }
 
-    status.textContent = "Saving...";
+    status.textContent = "Saving…";
+    votedQuestions.push(poll.question);
     chrome.runtime.sendMessage(
-      { type: "vote", choice: selected, question: currentQuestion },
+      { type: "vote", choice: selected, question: poll.question },
       (res) => {
-        if (chrome.runtime.lastError) {
-          status.textContent = "Could not save your vote.";
-        } else if (res && res.ok) {
-          status.textContent = `Recorded: ${selected}`;
-        } else {
-          status.textContent = (res && res.error) || "Could not save your vote.";
-        }
-        removeSoon();
+        status.textContent =
+          !chrome.runtime.lastError && res && res.ok
+            ? `Recorded: ${selected}`
+            : "Could not save your vote.";
+        setTimeout(() => {
+          clearOverlay();
+          processNext();
+        }, 1200);
       }
     );
   }
 }
 
-function removeSoon() {
-  setTimeout(() => {
-    if (overlayEl && overlayEl.parentNode) {
-      overlayEl.parentNode.removeChild(overlayEl);
-    }
-    overlayEl = null;
-  }, 2500);
+function showResults() {
+  const questions = votedQuestions.slice();
+  votedQuestions = [];
+  showResultFor(questions, 0);
+}
+
+function showResultFor(questions, i) {
+  if (i >= questions.length) {
+    busy = false;
+    return;
+  }
+  waitAndShowBar(questions[i], () => showResultFor(questions, i + 1));
+}
+
+function waitAndShowBar(question, done) {
+  const { el, content } = makeCard();
+  overlayEl = el;
+
+  div(content, question, {
+    fontSize: "15px",
+    fontWeight: "700",
+    lineHeight: "1.3",
+    marginBottom: "14px"
+  });
+  const body = div(content, "Tallying votes…", { fontSize: "12px", color: "#888888" });
+
+  document.body.appendChild(el);
+
+  const start = Date.now();
+
+  const poll = () => {
+    chrome.runtime.sendMessage({ type: "breakdown", question }, (res) => {
+      if (chrome.runtime.lastError) {
+        clearOverlay();
+        done();
+        return;
+      }
+      const ready = res && res.ok && res.total > POLL.resultsThreshold;
+      if (ready) {
+        renderBar(body, res.yes, res.no, res.total);
+        setTimeout(() => {
+          clearOverlay();
+          done();
+        }, RESULTS_SHOW_MS);
+        return;
+      }
+      if (Date.now() - start >= RESULTS_WAIT_MS) {
+        clearOverlay();
+        done();
+        return;
+      }
+      setTimeout(poll, RESULTS_POLL_MS);
+    });
+  };
+
+  poll();
+}
+
+function renderBar(body, yes, no, total) {
+  const yesPct = Math.round((yes / total) * 100);
+  const noPct = 100 - yesPct;
+
+  body.textContent = "";
+  body.style.color = "#ffffff";
+
+  const labels = div(body, "", {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: "13px",
+    fontWeight: "700",
+    marginBottom: "8px"
+  });
+  const y = document.createElement("span");
+  y.textContent = `Yes ${yesPct}%`;
+  y.style.color = YES_COLOR;
+  const n = document.createElement("span");
+  n.textContent = `No ${noPct}%`;
+  n.style.color = NO_COLOR;
+  labels.appendChild(y);
+  labels.appendChild(n);
+
+  const bar = div(body, "", {
+    display: "flex",
+    height: "14px",
+    borderRadius: "7px",
+    overflow: "hidden",
+    background: "#222222"
+  });
+  div(bar, "", { width: `${yesPct}%`, background: YES_COLOR });
+  div(bar, "", { width: `${noPct}%`, background: NO_COLOR });
 }

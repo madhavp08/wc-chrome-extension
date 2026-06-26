@@ -13,6 +13,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       .catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
+  if (msg && msg.type === "breakdown") {
+    getBreakdown(msg.question)
+      .then(sendResponse)
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
 });
 
 async function checkEvents() {
@@ -37,14 +43,12 @@ async function checkEvents() {
   const status = data.fixture && data.fixture.status ? data.fixture.status.short : "";
   const finished = APIFOOTBALL_CONFIG.finishedStatuses.includes(status);
 
-  let result = { show: false };
+  let polls = [];
   if (afEventsLen != null) {
-    const fresh = events
+    polls = events
       .slice(afEventsLen)
-      .filter((e) => APIFOOTBALL_CONFIG.triggerTypes.includes(e.type));
-    if (fresh.length) {
-      result = { show: true, poll: buildPoll(fresh[fresh.length - 1]) };
-    }
+      .filter((e) => APIFOOTBALL_CONFIG.triggerTypes.includes(e.type))
+      .map(buildPoll);
   }
 
   await chrome.storage.local.set({
@@ -52,7 +56,7 @@ async function checkEvents() {
     afEventsLen: finished ? null : events.length
   });
 
-  return result;
+  return { polls };
 }
 
 async function findLiveFixture() {
@@ -117,4 +121,31 @@ async function submitVote(choice, question) {
     const detail = await res.text();
     throw new Error(`Save failed (${res.status}): ${detail}`);
   }
+}
+
+async function getBreakdown(question) {
+  const { url, anonKey } = SUPABASE_CONFIG;
+
+  const headers = { apikey: anonKey, "Content-Type": "application/json" };
+  if (anonKey.startsWith("ey")) {
+    headers.Authorization = `Bearer ${anonKey}`;
+  }
+
+  const res = await fetch(`${url}/rest/v1/rpc/vote_breakdown`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ q: question })
+  });
+  if (!res.ok) return { ok: false };
+
+  const data = await res.json().catch(() => null);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return { ok: false };
+
+  return {
+    ok: true,
+    total: Number(row.total) || 0,
+    yes: Number(row.yes) || 0,
+    no: Number(row.no) || 0
+  };
 }

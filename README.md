@@ -23,6 +23,12 @@ Supabase. The first check after enabling primes silently, so you don't see a bac
 Voting: the overlay lasts up to 20 seconds; once you pick an option it auto-submits
 after 5 seconds unless you change it (changing resets the 5s timer).
 
+Results: after you vote, the overlay shows a Yes/No percentage bar for that question
+once it has more than `POLL.resultsThreshold` votes (it waits and re-checks for a
+short while, since votes arrive over time). If several cards happen at once, it
+collects your vote on each first, then shows the bars. Vote counts are never shown —
+only the percentage split.
+
 ## Architecture
 
 - `popup.html` / `popup.js` / `popup.css` — the on/off control panel.
@@ -51,7 +57,7 @@ available on affordable feeds, and cards/VAR are the genuinely controversial cal
 ### 1. Supabase table
 
 ```sql
-create table votes (
+create table if not exists votes (
   id bigint generated always as identity primary key,
   question text not null,
   choice text not null,
@@ -60,10 +66,29 @@ create table votes (
 
 alter table votes enable row level security;
 
+drop policy if exists "anon can insert votes" on votes;
 create policy "anon can insert votes"
   on votes for insert
   to anon
   with check (true);
+
+-- Aggregates only, so the insert-only key can read a Yes/No breakdown
+-- without exposing individual rows.
+create or replace function vote_breakdown(q text)
+returns table(total bigint, yes bigint, no bigint)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    count(*) as total,
+    count(*) filter (where choice = 'Yes') as yes,
+    count(*) filter (where choice = 'No') as no
+  from votes
+  where question = q;
+$$;
+
+grant execute on function vote_breakdown(text) to anon;
 ```
 
 ### 2. Deploy the API-Football proxy
@@ -102,14 +127,26 @@ In `config.js`:
 - `APIFOOTBALL_CONFIG.triggerTypes` — `["Card", "Var"]`; add `"Goal"` to also poll on goals.
 - `POLL.decisionSeconds` — max overlay time (20); `POLL.confirmSeconds` — auto-submit
   delay after a pick (5).
+- `POLL.resultsThreshold` — show the results bar once a question has more than this
+  many votes (default 1; set to 0 to see the bar after your own vote when testing).
 
 ## Viewing votes
 
-In Supabase, open Table Editor → `votes`, or tally with:
+In Supabase, open Table Editor → `votes`, or run this in the SQL editor to see each
+question and its vote breakdown:
 
 ```sql
-select choice, count(*) from votes group by choice order by count(*) desc;
+select question,
+       count(*) as votes,
+       count(*) filter (where choice = 'Yes') as yes,
+       count(*) filter (where choice = 'No') as no
+from votes
+group by question
+order by votes desc;
 ```
+
+(Reading from the terminal would need a service-role key, since the shipped key is
+insert-only; the Supabase SQL editor is the easy path.)
 
 ## Packaging for the Chrome Web Store
 
