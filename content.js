@@ -2,6 +2,7 @@ let overlayEl = null;
 let queue = [];
 let votedQuestions = [];
 let busy = false;
+let gamePickerOpen = false;
 
 const CARD_BG = "#121212";
 const YES_COLOR = "#00b86b";
@@ -17,19 +18,83 @@ const NO_KEYS = new Set(["d", "l"]);
 setInterval(tick, APIFOOTBALL_CONFIG.pollSeconds * 1000);
 
 function tick() {
-  if (document.hidden || overlayEl || busy) return;
+  if (document.hidden || overlayEl || busy || gamePickerOpen) return;
   if (!chrome.runtime || !chrome.runtime.id) return;
   try {
-    chrome.runtime.sendMessage({ type: "checkEvents" }, (res) => {
-      if (chrome.runtime.lastError) return;
-      const polls = res && Array.isArray(res.polls) ? res.polls : [];
-      if (!polls.length) return;
-      queue = polls.slice(-MAX_QUEUE);
-      votedQuestions = [];
-      busy = true;
-      processNext();
+    chrome.storage.local.get("enabled", ({ enabled }) => {
+      if (!enabled) {
+        gamePickerOpen = false;
+        return;
+      }
+      chrome.runtime.sendMessage({ type: "checkEvents" }, (res) => {
+        if (chrome.runtime.lastError) return;
+        if (res && res.needGamePick && res.games && res.games.length) {
+          showGamePicker(res.games);
+          return;
+        }
+        const polls = res && Array.isArray(res.polls) ? res.polls : [];
+        if (!polls.length) return;
+        queue = polls.slice(-MAX_QUEUE);
+        votedQuestions = [];
+        busy = true;
+        processNext();
+      });
     });
   } catch (e) {}
+}
+
+function showGamePicker(games) {
+  if (overlayEl || gamePickerOpen) return;
+  gamePickerOpen = true;
+  busy = true;
+
+  const { el, content } = makeCard();
+  overlayEl = el;
+
+  div(content, "Which match should VARdict follow?", {
+    fontSize: "17px",
+    fontWeight: "700",
+    lineHeight: "1.3",
+    marginBottom: "8px"
+  });
+  div(content, "You can change this only by turning VARdict off.", {
+    fontSize: "12px",
+    color: "#888888",
+    marginBottom: "16px"
+  });
+
+  games.forEach((game) => {
+    const btn = document.createElement("button");
+    btn.textContent = game.label;
+    Object.assign(btn.style, {
+      display: "block",
+      width: "100%",
+      marginBottom: "8px",
+      padding: "12px",
+      fontSize: "14px",
+      fontWeight: "600",
+      background: "transparent",
+      color: "#ffffff",
+      border: "1px solid rgba(255,255,255,0.3)",
+      borderRadius: "8px",
+      cursor: "pointer",
+      textAlign: "left"
+    });
+    btn.addEventListener("click", () => {
+      btn.disabled = true;
+      chrome.runtime.sendMessage(
+        { type: "selectGame", gameId: game.id, label: game.label },
+        () => {
+          gamePickerOpen = false;
+          busy = false;
+          clearOverlay();
+        }
+      );
+    });
+    content.appendChild(btn);
+  });
+
+  document.body.appendChild(el);
 }
 
 function processNext() {

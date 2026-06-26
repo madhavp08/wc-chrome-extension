@@ -15,10 +15,10 @@ Built with plain JavaScript, HTML, and CSS — no frameworks or build step.
 The toolbar icon opens a control panel with an on/off toggle, saved in
 `chrome.storage.local`. While it's on, the content script on your visible tab polls
 every 20 seconds and asks the background service worker to check for new events. The
-worker finds the live World Cup fixture and its event timeline, remembers how many
-events it has already seen, and returns the latest new card or VAR. The overlay then
-shows a contextual question (player, team, minute), and your vote is saved to
-Supabase. The first check after enabling primes silently, so you don't see a backlog.
+worker uses the live World Cup fixture you chose and its event timeline, remembers
+how many events it has already seen, and returns the latest new card or VAR. If more
+than one match is live when you turn on, an overlay asks which to follow; that
+choice sticks until you turn off. One live match is picked automatically.
 
 Voting: the overlay lasts up to 20 seconds; once you pick an option it auto-submits
 after 5 seconds unless you change it (changing resets the 5s timer). Keyboard shortcuts

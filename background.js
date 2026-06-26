@@ -4,7 +4,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg && msg.type === "checkEvents") {
     checkEvents()
       .then(sendResponse)
-      .catch(() => sendResponse({ show: false }));
+      .catch(() => sendResponse({ polls: [] }));
+    return true;
+  }
+  if (msg && msg.type === "selectGame") {
+    chrome.storage.local
+      .set({
+        selectedGameId: msg.gameId,
+        selectedGameLabel: msg.label,
+        afEventsLen: null
+      })
+      .then(() => sendResponse({ ok: true }))
+      .catch(() => sendResponse({ ok: false }));
     return true;
   }
   if (msg && msg.type === "vote") {
@@ -22,47 +33,66 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 async function checkEvents() {
-  const { enabled } = await chrome.storage.local.get("enabled");
-  if (!enabled) return { show: false };
-
-  let { afFixtureId, afEventsLen } = await chrome.storage.local.get([
-    "afFixtureId",
+  const { enabled, selectedGameId, afEventsLen } = await chrome.storage.local.get([
+    "enabled",
+    "selectedGameId",
     "afEventsLen"
   ]);
+  if (!enabled) return { polls: [] };
 
-  if (!afFixtureId) {
-    afFixtureId = await findLiveFixture();
-    if (!afFixtureId) return { show: false };
-    afEventsLen = null;
+  let gameId = selectedGameId;
+  if (!gameId) {
+    const games = await listLiveGames();
+    if (!games.length) return { polls: [] };
+    if (games.length === 1) {
+      gameId = games[0].id;
+      await chrome.storage.local.set({
+        selectedGameId: gameId,
+        selectedGameLabel: games[0].label,
+        afEventsLen: null
+      });
+    } else {
+      return { needGamePick: true, games };
+    }
   }
 
-  const data = await fetchFixture(afFixtureId);
-  if (!data) return { show: false };
+  const data = await fetchFixture(gameId);
+  if (!data) return { polls: [] };
 
   const events = Array.isArray(data.events) ? data.events : [];
   const status = data.fixture && data.fixture.status ? data.fixture.status.short : "";
   const finished = APIFOOTBALL_CONFIG.finishedStatuses.includes(status);
 
   let polls = [];
-  if (afEventsLen != null) {
+  let nextLen = afEventsLen;
+  if (afEventsLen != null && !finished) {
     polls = events
       .slice(afEventsLen)
       .filter((e) => APIFOOTBALL_CONFIG.triggerTypes.includes(e.type))
       .map(buildPoll);
   }
+  if (!finished) {
+    nextLen = events.length;
+  }
 
-  await chrome.storage.local.set({
-    afFixtureId: finished ? null : afFixtureId,
-    afEventsLen: finished ? null : events.length
-  });
-
+  await chrome.storage.local.set({ afEventsLen: nextLen });
   return { polls };
 }
 
-async function findLiveFixture() {
+async function listLiveGames() {
   const json = await callProxy("action=live");
   const list = json && Array.isArray(json.response) ? json.response : [];
-  return list.length ? list[0].fixture.id : null;
+  return list.map((item) => {
+    const home = item.teams && item.teams.home ? item.teams.home.name : "Home";
+    const away = item.teams && item.teams.away ? item.teams.away.name : "Away";
+    const gh = item.goals && item.goals.home != null ? item.goals.home : null;
+    const ga = item.goals && item.goals.away != null ? item.goals.away : null;
+    const score = gh != null && ga != null ? ` (${gh}-${ga})` : "";
+    return {
+      id: item.fixture.id,
+      label: `${home} vs ${away}${score}`
+    };
+  });
 }
 
 async function fetchFixture(id) {
