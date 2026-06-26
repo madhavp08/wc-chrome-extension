@@ -8,7 +8,7 @@ VARdict
 
 ## Summary (max 132 characters)
 
-Vote on controversial calls in real time.
+Vote on controversial calls in real time. While a poll is open: A or J for Yes, D or L for No.
 
 ## Category
 

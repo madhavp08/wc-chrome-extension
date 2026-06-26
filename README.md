@@ -21,7 +21,8 @@ shows a contextual question (player, team, minute), and your vote is saved to
 Supabase. The first check after enabling primes silently, so you don't see a backlog.
 
 Voting: the overlay lasts up to 20 seconds; once you pick an option it auto-submits
-after 5 seconds unless you change it (changing resets the 5s timer).
+after 5 seconds unless you change it (changing resets the 5s timer). Keyboard shortcuts
+while the poll is open: A or J for Yes, D or L for No.
 
 Results: after you vote, the overlay shows a Yes/No percentage bar for that question
 once it has more than `POLL.resultsThreshold` votes (it waits and re-checks for a

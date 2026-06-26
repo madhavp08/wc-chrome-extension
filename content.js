@@ -11,6 +11,8 @@ const MAX_QUEUE = 3;
 const RESULTS_WAIT_MS = 20000;
 const RESULTS_POLL_MS = 5000;
 const RESULTS_SHOW_MS = 6000;
+const YES_KEYS = new Set(["a", "j"]);
+const NO_KEYS = new Set(["d", "l"]);
 
 setInterval(tick, APIFOOTBALL_CONFIG.pollSeconds * 1000);
 
@@ -114,20 +116,38 @@ function showPoll(poll) {
       borderRadius: "8px",
       cursor: "pointer"
     });
-    btn.addEventListener("click", () => {
-      selected = label;
-      buttons.forEach((b) => {
-        const on = b === btn;
-        b.style.background = on ? "#ffffff" : "transparent";
-        b.style.color = on ? "#111111" : "#ffffff";
-      });
-      note.textContent = `Submitting in ${POLL.confirmSeconds}s unless you change it.`;
-      clearTimeout(confirmTimer);
-      confirmTimer = setTimeout(finalize, POLL.confirmSeconds * 1000);
-    });
+    btn.addEventListener("click", () => pick(label, btn));
     row.appendChild(btn);
     return btn;
   });
+
+  function pick(label, btn) {
+    selected = label;
+    buttons.forEach((b) => {
+      const on = b === btn;
+      b.style.background = on ? "#ffffff" : "transparent";
+      b.style.color = on ? "#111111" : "#ffffff";
+    });
+    note.textContent = `Submitting in ${POLL.confirmSeconds}s unless you change it.`;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(finalize, POLL.confirmSeconds * 1000);
+  }
+
+  function onKey(e) {
+    if (finalized) return;
+    const k = e.key.toLowerCase();
+    if (YES_KEYS.has(k)) {
+      e.preventDefault();
+      e.stopPropagation();
+      pick("Yes", buttons[0]);
+    } else if (NO_KEYS.has(k)) {
+      e.preventDefault();
+      e.stopPropagation();
+      pick("No", buttons[1]);
+    }
+  }
+
+  document.addEventListener("keydown", onKey, true);
 
   const note = div(content, `You have ${POLL.decisionSeconds} seconds to decide.`, {
     marginTop: "16px",
@@ -147,6 +167,7 @@ function showPoll(poll) {
   function finalize() {
     if (finalized) return;
     finalized = true;
+    document.removeEventListener("keydown", onKey, true);
     clearTimeout(confirmTimer);
     clearTimeout(maxTimer);
     buttons.forEach((b) => (b.disabled = true));
