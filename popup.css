@@ -6,7 +6,7 @@
 
 body {
   width: 300px;
-  background: #0e0e0e;
+  background: #121212;
   color: #ffffff;
   font-family: -apple-system, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -14,11 +14,7 @@ body {
 
 .card {
   padding: 22px 22px 20px;
-  background: rgba(22, 22, 24, 0.35);
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: #121212;
 }
 
 .toggle-btn {
@@ -45,50 +41,74 @@ body {
   font-weight: 700;
   text-align: center;
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(16px) saturate(1.5);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 10px;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
 .toggle-btn:hover .toggle-label {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.34);
+  border-color: rgba(255, 255, 255, 0.45);
+  background: #1a1a1a;
 }
 
 .toggle-btn:active .toggle-label {
   transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.2);
+  background: #1a1a1a;
 }
 
 .toggle-input:checked + .toggle-label {
-  background: rgba(255, 255, 255, 0.88);
-  color: #111111;
-  border-color: rgba(255, 255, 255, 0.88);
-  text-shadow: none;
+  background: #121212;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.85);
 }
 
 .toggle-btn:hover .toggle-input:checked + .toggle-label {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(255, 255, 255, 0.92);
+  background: #1a1a1a;
+  border-color: #ffffff;
 }
 
 .slogan {
   font-size: 12px;
   line-height: 1.45;
-  color: rgba(255, 255, 255, 0.72);
+  color: #888888;
   text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 
 .note {
   margin-top: 14px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.58);
+  color: #777777;
   text-align: center;
   min-height: 14px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+.preview-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.preview-btn {
+  flex: 1;
+  padding: 8px 4px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  background: #121212;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+.preview-btn:hover {
+  background: #1a1a1a;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.preview-btn:active {
+  transform: scale(0.98);
+  background: #1a1a1a;
 }

@@ -1,5 +1,6 @@
 const checkbox = document.getElementById("enabled");
 const stateEl = document.getElementById("state");
+const devMode = typeof DEV_MODE !== "undefined" && DEV_MODE;
 
 function render() {
   if (!checkbox.checked) {
@@ -20,6 +21,28 @@ function render() {
       return;
     }
     stateEl.textContent = `On. ${modeLabel}. Pick a live match on your page.`;
+  });
+}
+
+function sendPreview(kind) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs[0];
+    if (!tab || !tab.id) {
+      stateEl.textContent = "No active tab.";
+      return;
+    }
+    const url = tab.url || "";
+    if (url.startsWith("chrome://") || url.startsWith("chrome-extension://") || url.startsWith("edge://")) {
+      stateEl.textContent = "Open a normal webpage first.";
+      return;
+    }
+    chrome.tabs.sendMessage(tab.id, { type: "preview", kind }, (res) => {
+      if (chrome.runtime.lastError || !res || !res.ok) {
+        stateEl.textContent = "Refresh the page, then try preview again.";
+        return;
+      }
+      window.close();
+    });
   });
 }
 
@@ -48,3 +71,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     render();
   }
 });
+
+const previewRow = document.querySelector(".preview-row");
+if (devMode && previewRow) {
+  previewRow.hidden = false;
+  document.getElementById("preview-vote").addEventListener("click", () => sendPreview("vote"));
+  document.getElementById("preview-goal").addEventListener("click", () => sendPreview("goal"));
+  document.getElementById("preview-results").addEventListener("click", () => sendPreview("results"));
+}

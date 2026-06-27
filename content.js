@@ -17,6 +17,11 @@ const YES_KEYS = new Set(["a", "j"]);
 const NO_KEYS = new Set(["d", "l"]);
 const RESULTS_SHOW_MS = 6000;
 
+const PREVIEW = {
+  question: "Yellow card for Example Player (Team), 67' — right call?",
+  goal: "Goal · 67' — Example Player (Team)"
+};
+
 ensureOverlayStyles();
 
 function ensureOverlayStyles() {
@@ -25,35 +30,15 @@ function ensureOverlayStyles() {
   style.id = "vardict-overlay-styles";
   style.textContent = `
     .vardict-glass {
-      position: relative;
-      isolation: isolate;
-      background: rgba(22, 22, 24, 0.22);
-      backdrop-filter: blur(52px) saturate(1.9) brightness(0.94);
-      -webkit-backdrop-filter: blur(52px) saturate(1.9) brightness(0.94);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      box-shadow:
-        0 10px 40px rgba(0, 0, 0, 0.22),
-        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      background: #121212;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
       color: #ffffff;
       -webkit-font-smoothing: antialiased;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 10px rgba(0, 0, 0, 0.35);
     }
-    .vardict-glass::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: linear-gradient(
-        145deg,
-        rgba(255, 255, 255, 0.1) 0%,
-        rgba(255, 255, 255, 0.02) 42%,
-        rgba(255, 255, 255, 0.06) 100%
-      );
-      pointer-events: none;
-    }
-    .vardict-glass > * {
-      position: relative;
-      z-index: 1;
+    .vardict-glass--compact .vardict-glass-inner {
+      padding: 14px 18px;
+      min-height: 0;
     }
     .vardict-heading {
       font-size: 17px;
@@ -63,29 +48,26 @@ function ensureOverlayStyles() {
     }
     .vardict-muted {
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.78);
+      color: #888888;
       margin-bottom: 16px;
     }
     .vardict-btn {
       font-family: inherit;
       font-weight: 600;
       color: #ffffff;
-      background: rgba(255, 255, 255, 0.07);
-      backdrop-filter: blur(16px) saturate(1.5);
-      -webkit-backdrop-filter: blur(16px) saturate(1.5);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: #121212;
+      border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     }
     .vardict-btn:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.14);
-      border-color: rgba(255, 255, 255, 0.34);
+      background: #1a1a1a;
+      border-color: rgba(255, 255, 255, 0.45);
     }
     .vardict-btn:active:not(:disabled) {
       transform: scale(0.98);
-      background: rgba(255, 255, 255, 0.2);
+      background: #1a1a1a;
     }
     .vardict-btn:disabled {
       opacity: 0.55;
@@ -105,16 +87,13 @@ function ensureOverlayStyles() {
       font-size: 16px;
     }
     .vardict-btn--selected {
-      background: rgba(255, 255, 255, 0.88);
-      color: #111111;
-      border-color: rgba(255, 255, 255, 0.88);
-      text-shadow: none;
-      backdrop-filter: blur(20px) saturate(1.4);
-      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      background: #2a2a2a;
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.85);
     }
     .vardict-btn--selected:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.92);
-      border-color: rgba(255, 255, 255, 0.92);
+      background: #333333;
+      border-color: #ffffff;
     }
     .vardict-btn-title {
       font-weight: 700;
@@ -122,11 +101,11 @@ function ensureOverlayStyles() {
     }
     .vardict-btn-hint {
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.72);
+      color: #888888;
       font-weight: 400;
     }
     .vardict-btn--selected .vardict-btn-hint {
-      color: rgba(0, 0, 0, 0.55);
+      color: #aaaaaa;
     }
   `;
   document.documentElement.appendChild(style);
@@ -380,7 +359,7 @@ function showGamePicker(games) {
 }
 
 function showGoalMoment(moment, done) {
-  const { el, content } = makeCard();
+  const { el, content } = makeCard({ compact: true });
   overlayEl = el;
 
   div(content, moment.text, {
@@ -396,7 +375,8 @@ function showGoalMoment(moment, done) {
   }, POLL.momentShowSeconds * 1000);
 }
 
-function showPoll(poll, voteEnd) {
+function showPoll(poll, voteEnd, options) {
+  const preview = Boolean(options && options.preview);
   let selected = null;
   let finalized = false;
   let confirmTimer = null;
@@ -472,9 +452,18 @@ function showPoll(poll, voteEnd) {
 
     if (selected === null) {
       clearOverlay();
-      handled.add(poll.question);
+      if (!preview) handled.add(poll.question);
       busy = false;
-      tryStartVote();
+      if (!preview) tryStartVote();
+      return;
+    }
+
+    if (preview) {
+      status.textContent = `Preview: ${selected} (not saved)`;
+      setTimeout(() => {
+        clearOverlay();
+        busy = false;
+      }, 800);
       return;
     }
 
@@ -526,9 +515,10 @@ function showBreakdown(question, done) {
   });
 }
 
-function makeCard() {
+function makeCard(options) {
+  const compact = options && options.compact;
   const el = document.createElement("div");
-  el.className = "vardict-glass";
+  el.className = compact ? "vardict-glass vardict-glass--compact" : "vardict-glass";
   Object.assign(el.style, {
     position: "fixed",
     top: "18px",
@@ -542,9 +532,10 @@ function makeCard() {
     color: "#ffffff"
   });
   const content = document.createElement("div");
+  content.className = "vardict-glass-inner";
   Object.assign(content.style, {
-    padding: "20px",
-    minHeight: "150px",
+    padding: compact ? "14px 18px" : "20px",
+    minHeight: compact ? "0" : "150px",
     boxSizing: "border-box"
   });
   el.appendChild(content);
@@ -602,4 +593,62 @@ function renderBar(body, yes, no, total) {
   });
   div(bar, "", { width: `${yesPct}%`, background: YES_COLOR });
   div(bar, "", { width: `${noPct}%`, background: NO_COLOR });
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (!msg || msg.type !== "preview") return;
+  sendResponse({ ok: runPreview(msg.kind) });
+  return true;
+});
+
+function runPreview(kind) {
+  if (typeof DEV_MODE === "undefined" || !DEV_MODE) return false;
+  if (overlayEl || busy || gamePickerOpen || modePickerOpen) return false;
+
+  if (kind === "vote") {
+    busy = true;
+    showPoll(
+      { question: PREVIEW.question, opened: Date.now() },
+      Date.now() + POLL.decisionSeconds * 1000,
+      { preview: true }
+    );
+    return true;
+  }
+
+  if (kind === "goal") {
+    busy = true;
+    showGoalMoment({ key: "preview:goal", text: PREVIEW.goal }, () => {
+      busy = false;
+    });
+    return true;
+  }
+
+  if (kind === "results") {
+    busy = true;
+    showPreviewBreakdown(PREVIEW.question, () => {
+      busy = false;
+    });
+    return true;
+  }
+
+  return false;
+}
+
+function showPreviewBreakdown(question, done) {
+  const { el, content } = makeCard();
+  overlayEl = el;
+
+  div(content, question, {
+    fontSize: "15px",
+    fontWeight: "700",
+    lineHeight: "1.3",
+    marginBottom: "14px"
+  });
+  const body = div(content, "", {});
+  document.body.appendChild(el);
+  renderBar(body, 62, 38, 100);
+  setTimeout(() => {
+    clearOverlay();
+    done();
+  }, RESULTS_SHOW_MS);
 }

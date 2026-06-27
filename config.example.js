@@ -1,6 +1,9 @@
 // Copy this file to config.js and fill in your own values.
 // config.js is gitignored so real keys are never committed.
 
+// Preview buttons (Vote / Goal / Results). Keep false for public releases.
+const DEV_MODE = false;
+
 const SUPABASE_CONFIG = {
   url: "https://YOUR-PROJECT.supabase.co",
   anonKey: "YOUR-SUPABASE-PUBLISHABLE-KEY",
