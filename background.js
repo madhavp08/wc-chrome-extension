@@ -1,10 +1,10 @@
 importScripts("config.js");
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg && msg.type === "checkEvents") {
-    checkEvents()
+  if (msg && msg.type === "sync") {
+    sync()
       .then(sendResponse)
-      .catch(() => sendResponse({ polls: [] }));
+      .catch(() => sendResponse({ activePolls: [] }));
     return true;
   }
   if (msg && msg.type === "selectGame") {
@@ -32,18 +32,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-async function checkEvents() {
+async function sync() {
   const { enabled, selectedGameId, afEventsLen } = await chrome.storage.local.get([
     "enabled",
     "selectedGameId",
     "afEventsLen"
   ]);
-  if (!enabled) return { polls: [] };
+  if (!enabled) return { activePolls: [] };
 
   let gameId = selectedGameId;
   if (!gameId) {
     const games = await listLiveGames();
-    if (!games.length) return { polls: [] };
+    if (!games.length) return { activePolls: [] };
     if (games.length === 1) {
       gameId = games[0].id;
       await chrome.storage.local.set({
@@ -52,31 +52,69 @@ async function checkEvents() {
         afEventsLen: null
       });
     } else {
-      return { needGamePick: true, games };
+      return { needGamePick: true, games, activePolls: [] };
     }
   }
 
+  await registerNewEvents(gameId, afEventsLen);
+  const activePolls = await fetchActivePolls(gameId);
+  return { activePolls };
+}
+
+async function registerNewEvents(gameId, afEventsLen) {
   const data = await fetchFixture(gameId);
-  if (!data) return { polls: [] };
+  if (!data) return;
 
   const events = Array.isArray(data.events) ? data.events : [];
   const status = data.fixture && data.fixture.status ? data.fixture.status.short : "";
   const finished = APIFOOTBALL_CONFIG.finishedStatuses.includes(status);
 
-  let polls = [];
-  let nextLen = afEventsLen;
   if (afEventsLen != null && !finished) {
-    polls = events
+    const fresh = events
       .slice(afEventsLen)
-      .filter((e) => APIFOOTBALL_CONFIG.triggerTypes.includes(e.type))
-      .map(buildPoll);
-  }
-  if (!finished) {
-    nextLen = events.length;
+      .filter((e) => APIFOOTBALL_CONFIG.triggerTypes.includes(e.type));
+    for (const event of fresh) {
+      const poll = buildPoll(event);
+      await openPoll(gameId, poll.question);
+    }
   }
 
-  await chrome.storage.local.set({ afEventsLen: nextLen });
-  return { polls };
+  if (!finished) {
+    await chrome.storage.local.set({ afEventsLen: events.length });
+  }
+}
+
+async function openPoll(fixtureId, question) {
+  const { url, anonKey } = SUPABASE_CONFIG;
+  const headers = { apikey: anonKey, "Content-Type": "application/json" };
+  if (anonKey.startsWith("ey")) {
+    headers.Authorization = `Bearer ${anonKey}`;
+  }
+  await fetch(`${url}/rest/v1/rpc/open_poll`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ p_fixture_id: fixtureId, p_question: question })
+  });
+}
+
+async function fetchActivePolls(fixtureId) {
+  const { url, anonKey } = SUPABASE_CONFIG;
+  const headers = { apikey: anonKey, "Content-Type": "application/json" };
+  if (anonKey.startsWith("ey")) {
+    headers.Authorization = `Bearer ${anonKey}`;
+  }
+  const res = await fetch(`${url}/rest/v1/rpc/active_polls_for_fixture`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ p_fixture_id: fixtureId })
+  });
+  if (!res.ok) return [];
+  const rows = await res.json().catch(() => null);
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => ({
+    question: row.question,
+    openedAt: row.opened_at
+  }));
 }
 
 async function listLiveGames() {

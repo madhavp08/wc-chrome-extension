@@ -13,22 +13,22 @@ Built with plain JavaScript, HTML, and CSS — no frameworks or build step.
 ## How it works
 
 The toolbar icon opens a control panel with an on/off toggle, saved in
-`chrome.storage.local`. While it's on, the content script on your visible tab polls
-every 20 seconds and asks the background service worker to check for new events. The
-worker uses the live World Cup fixture you chose and its event timeline, remembers
-how many events it has already seen, and returns the latest new card or VAR. If more
-than one match is live when you turn on, an overlay asks which to follow; that
-choice sticks until you turn off. One live match is picked automatically.
+`chrome.storage.local`. While it's on, the content script syncs every few seconds with
+the service worker and Supabase. When a card or VAR is detected, the first sync
+registers the question in Supabase with a shared `opened_at` timestamp. Every client
+reads that same clock, so the vote window and results bar stay aligned across users.
+Delayed streams still get the poll when the API reports the event (they may have less
+time left to vote). Results appear `POLL.resultsDelaySeconds` (21s) after
+`opened_at`, not after each user votes individually.
 
 Voting: the overlay lasts up to 20 seconds; once you pick an option it auto-submits
 after 5 seconds unless you change it (changing resets the 5s timer). Keyboard shortcuts
 while the poll is open: A or J for Yes, D or L for No.
 
-Results: after you vote, the overlay shows a Yes/No percentage bar for that question
-once it has more than `POLL.resultsThreshold` votes (it waits and re-checks for a
-short while, since votes arrive over time). If several cards happen at once, it
-collects your vote on each first, then shows the bars. Vote counts are never shown —
-only the percentage split.
+Results: after you vote, the percentage bar appears at a fixed time —
+`opened_at + 21 seconds` — shared for everyone on that question. If several cards
+happen together, you vote on each in turn, then see each bar at its own scheduled time.
+Vote counts are never shown — only the percentage split.
 
 ## Architecture
 
@@ -90,6 +90,50 @@ as $$
 $$;
 
 grant execute on function vote_breakdown(text) to anon;
+
+-- Shared poll clock: first detector registers a question; all clients read the same opened_at.
+create table if not exists active_polls (
+  id bigint generated always as identity primary key,
+  fixture_id bigint not null,
+  question text not null unique,
+  opened_at timestamptz not null default now()
+);
+
+alter table active_polls enable row level security;
+
+create or replace function open_poll(p_fixture_id bigint, p_question text)
+returns timestamptz
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare t timestamptz;
+begin
+  insert into active_polls (fixture_id, question)
+  values (p_fixture_id, p_question)
+  on conflict (question) do nothing
+  returning opened_at into t;
+  if t is null then
+    select opened_at into t from active_polls where question = p_question;
+  end if;
+  return t;
+end;
+$$;
+
+create or replace function active_polls_for_fixture(p_fixture_id bigint)
+returns table(question text, opened_at timestamptz)
+language sql
+security definer
+set search_path = public
+as $$
+  select question, opened_at
+  from active_polls
+  where fixture_id = p_fixture_id
+    and opened_at > now() - interval '3 minutes';
+$$;
+
+grant execute on function open_poll(bigint, text) to anon;
+grant execute on function active_polls_for_fixture(bigint) to anon;
 ```
 
 ### 2. Deploy the API-Football proxy
@@ -124,12 +168,12 @@ during a live match.
 
 In `config.js`:
 
-- `APIFOOTBALL_CONFIG.pollSeconds` — poll interval (default 20).
 - `APIFOOTBALL_CONFIG.triggerTypes` — `["Card", "Var"]`; add `"Goal"` to also poll on goals.
-- `POLL.decisionSeconds` — max overlay time (20); `POLL.confirmSeconds` — auto-submit
-  delay after a pick (5).
-- `POLL.resultsThreshold` — show the results bar once a question has more than this
-  many votes (default 1; set to 0 to see the bar after your own vote when testing).
+- `POLL.syncSeconds` — how often clients sync with Supabase (default 3).
+- `POLL.decisionSeconds` — vote window length from `opened_at` (20).
+- `POLL.resultsDelaySeconds` — when the results bar appears after `opened_at` (21).
+- `POLL.confirmSeconds` — auto-submit delay after a pick (5).
+- `POLL.resultsThreshold` — minimum votes before showing a bar (0 shows even yours alone).
 
 ## Viewing votes
 
