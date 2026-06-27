@@ -11,12 +11,100 @@ const handled = new Set();
 const voted = new Set();
 const shownMoments = new Set();
 
-const CARD_BG = "#121212";
 const YES_COLOR = "#00b86b";
 const NO_COLOR = "#e5342b";
 const YES_KEYS = new Set(["a", "j"]);
 const NO_KEYS = new Set(["d", "l"]);
 const RESULTS_SHOW_MS = 6000;
+
+ensureOverlayStyles();
+
+function ensureOverlayStyles() {
+  if (document.getElementById("vardict-overlay-styles")) return;
+  const style = document.createElement("style");
+  style.id = "vardict-overlay-styles";
+  style.textContent = `
+    .vardict-glass {
+      background: rgba(18, 18, 18, 0.58);
+      backdrop-filter: blur(20px) saturate(1.25);
+      -webkit-backdrop-filter: blur(20px) saturate(1.25);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+    }
+    .vardict-heading {
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+    .vardict-muted {
+      font-size: 12px;
+      color: #888888;
+      margin-bottom: 16px;
+    }
+    .vardict-btn {
+      font-family: inherit;
+      font-weight: 600;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
+    }
+    .vardict-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.38);
+    }
+    .vardict-btn:active:not(:disabled) {
+      transform: scale(0.98);
+      background: rgba(255, 255, 255, 0.16);
+    }
+    .vardict-btn:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+    .vardict-btn--block {
+      display: block;
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 12px;
+      font-size: 14px;
+      text-align: left;
+    }
+    .vardict-btn--vote {
+      flex: 1;
+      padding: 12px 0;
+      font-size: 16px;
+    }
+    .vardict-btn--selected {
+      background: rgba(255, 255, 255, 0.92);
+      color: #111111;
+      border-color: rgba(255, 255, 255, 0.92);
+    }
+    .vardict-btn--selected:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(255, 255, 255, 0.92);
+    }
+    .vardict-btn-title {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .vardict-btn-hint {
+      font-size: 12px;
+      color: #888888;
+      font-weight: 400;
+    }
+  `;
+  document.documentElement.appendChild(style);
+}
+
+function makeButton(className) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = `vardict-btn ${className}`;
+  return btn;
+}
 
 setInterval(syncTick, POLL.syncSeconds * 1000);
 
@@ -180,15 +268,10 @@ function showModePicker() {
   overlayEl = el;
 
   div(content, "How are you following the match?", {
-    fontSize: "17px",
-    fontWeight: "700",
-    lineHeight: "1.3",
-    marginBottom: "8px"
+    className: "vardict-heading"
   });
   div(content, "You can change this only by turning VARdict off.", {
-    fontSize: "12px",
-    color: "#888888",
-    marginBottom: "16px"
+    className: "vardict-muted"
   });
 
   const modes = [
@@ -205,31 +288,13 @@ function showModePicker() {
   ];
 
   modes.forEach((mode) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    Object.assign(btn.style, {
-      display: "block",
-      width: "100%",
-      marginBottom: "8px",
-      padding: "12px",
-      fontSize: "14px",
-      fontWeight: "600",
-      background: "transparent",
-      color: "#ffffff",
-      border: "1px solid rgba(255,255,255,0.3)",
-      borderRadius: "8px",
-      cursor: "pointer",
-      textAlign: "left"
-    });
+    const btn = makeButton("vardict-btn--block");
     const title = document.createElement("div");
+    title.className = "vardict-btn-title";
     title.textContent = mode.title;
-    title.style.fontWeight = "700";
-    title.style.marginBottom = "4px";
     const hint = document.createElement("div");
+    hint.className = "vardict-btn-hint";
     hint.textContent = mode.hint;
-    hint.style.fontSize = "12px";
-    hint.style.color = "#888888";
-    hint.style.fontWeight = "400";
     btn.appendChild(title);
     btn.appendChild(hint);
     btn.addEventListener("click", () => {
@@ -255,34 +320,15 @@ function showGamePicker(games) {
   overlayEl = el;
 
   div(content, "Which match should VARdict follow?", {
-    fontSize: "17px",
-    fontWeight: "700",
-    lineHeight: "1.3",
-    marginBottom: "8px"
+    className: "vardict-heading"
   });
   div(content, "You can change this only by turning VARdict off.", {
-    fontSize: "12px",
-    color: "#888888",
-    marginBottom: "16px"
+    className: "vardict-muted"
   });
 
   games.forEach((game) => {
-    const btn = document.createElement("button");
+    const btn = makeButton("vardict-btn--block");
     btn.textContent = game.label;
-    Object.assign(btn.style, {
-      display: "block",
-      width: "100%",
-      marginBottom: "8px",
-      padding: "12px",
-      fontSize: "14px",
-      fontWeight: "600",
-      background: "transparent",
-      color: "#ffffff",
-      border: "1px solid rgba(255,255,255,0.3)",
-      borderRadius: "8px",
-      cursor: "pointer",
-      textAlign: "left"
-    });
     btn.addEventListener("click", () => {
       btn.disabled = true;
       chrome.runtime.sendMessage(
@@ -335,19 +381,8 @@ function showPoll(poll, voteEnd) {
 
   const row = div(content, "", { display: "flex", gap: "10px" });
   const buttons = POLL.options.map((label) => {
-    const btn = document.createElement("button");
+    const btn = makeButton("vardict-btn--vote");
     btn.textContent = label;
-    Object.assign(btn.style, {
-      flex: "1",
-      padding: "12px 0",
-      fontSize: "16px",
-      fontWeight: "600",
-      background: "transparent",
-      color: "#ffffff",
-      border: "1px solid rgba(255,255,255,0.3)",
-      borderRadius: "8px",
-      cursor: "pointer"
-    });
     btn.addEventListener("click", () => pick(label, btn));
     row.appendChild(btn);
     return btn;
@@ -356,9 +391,7 @@ function showPoll(poll, voteEnd) {
   function pick(label, btn) {
     selected = label;
     buttons.forEach((b) => {
-      const on = b === btn;
-      b.style.background = on ? "#ffffff" : "transparent";
-      b.style.color = on ? "#111111" : "#ffffff";
+      b.classList.toggle("vardict-btn--selected", b === btn);
     });
     note.textContent = `Submitting in ${POLL.confirmSeconds}s unless you change it.`;
     clearTimeout(confirmTimer);
@@ -462,6 +495,7 @@ function showBreakdown(question, done) {
 
 function makeCard() {
   const el = document.createElement("div");
+  el.className = "vardict-glass";
   Object.assign(el.style, {
     position: "fixed",
     top: "18px",
@@ -469,11 +503,8 @@ function makeCard() {
     transform: "translateX(-50%)",
     zIndex: "2147483647",
     width: "340px",
-    background: CARD_BG,
     borderRadius: "12px",
-    border: "1px solid rgba(255,255,255,0.08)",
     overflow: "hidden",
-    boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
     fontFamily: "-apple-system, system-ui, sans-serif",
     color: "#ffffff"
   });
@@ -490,6 +521,10 @@ function makeCard() {
 function div(parent, text, styles) {
   const d = document.createElement("div");
   if (text) d.textContent = text;
+  if (styles && styles.className) {
+    d.className = styles.className;
+    delete styles.className;
+  }
   Object.assign(d.style, styles || {});
   parent.appendChild(d);
   return d;
