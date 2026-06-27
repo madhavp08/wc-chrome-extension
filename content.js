@@ -25,11 +25,35 @@ function ensureOverlayStyles() {
   style.id = "vardict-overlay-styles";
   style.textContent = `
     .vardict-glass {
-      background: rgba(18, 18, 18, 0.58);
-      backdrop-filter: blur(20px) saturate(1.25);
-      -webkit-backdrop-filter: blur(20px) saturate(1.25);
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+      position: relative;
+      isolation: isolate;
+      background: rgba(22, 22, 24, 0.22);
+      backdrop-filter: blur(52px) saturate(1.9) brightness(0.94);
+      -webkit-backdrop-filter: blur(52px) saturate(1.9) brightness(0.94);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      -webkit-font-smoothing: antialiased;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65), 0 0 10px rgba(0, 0, 0, 0.35);
+    }
+    .vardict-glass::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.02) 42%,
+        rgba(255, 255, 255, 0.06) 100%
+      );
+      pointer-events: none;
+    }
+    .vardict-glass > * {
+      position: relative;
+      z-index: 1;
     }
     .vardict-heading {
       font-size: 17px;
@@ -39,26 +63,29 @@ function ensureOverlayStyles() {
     }
     .vardict-muted {
       font-size: 12px;
-      color: #888888;
+      color: rgba(255, 255, 255, 0.78);
       margin-bottom: 16px;
     }
     .vardict-btn {
       font-family: inherit;
       font-weight: 600;
       color: #ffffff;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease, color 0.15s ease;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     }
     .vardict-btn:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.1);
-      border-color: rgba(255, 255, 255, 0.38);
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.34);
     }
     .vardict-btn:active:not(:disabled) {
       transform: scale(0.98);
-      background: rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.2);
     }
     .vardict-btn:disabled {
       opacity: 0.55;
@@ -78,9 +105,12 @@ function ensureOverlayStyles() {
       font-size: 16px;
     }
     .vardict-btn--selected {
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.88);
       color: #111111;
-      border-color: rgba(255, 255, 255, 0.92);
+      border-color: rgba(255, 255, 255, 0.88);
+      text-shadow: none;
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
     }
     .vardict-btn--selected:hover:not(:disabled) {
       background: rgba(255, 255, 255, 0.92);
@@ -92,8 +122,11 @@ function ensureOverlayStyles() {
     }
     .vardict-btn-hint {
       font-size: 12px;
-      color: #888888;
+      color: rgba(255, 255, 255, 0.72);
       font-weight: 400;
+    }
+    .vardict-btn--selected .vardict-btn-hint {
+      color: rgba(0, 0, 0, 0.55);
     }
   `;
   document.documentElement.appendChild(style);
@@ -415,9 +448,9 @@ function showPoll(poll, voteEnd) {
   document.addEventListener("keydown", onKey, true);
 
   const note = div(content, `You have ${Math.ceil(msLeft / 1000)} seconds to decide.`, {
+    className: "vardict-muted",
     marginTop: "16px",
-    fontSize: "12px",
-    color: "#888888"
+    marginBottom: "0"
   });
   const status = div(content, "", {
     marginTop: "8px",
@@ -476,7 +509,7 @@ function showBreakdown(question, done) {
     lineHeight: "1.3",
     marginBottom: "14px"
   });
-  const body = div(content, "Loading results…", { fontSize: "12px", color: "#888888" });
+  const body = div(content, "Loading results…", { className: "vardict-muted", marginBottom: "0" });
   document.body.appendChild(el);
 
   chrome.runtime.sendMessage({ type: "breakdown", question }, (res) => {
