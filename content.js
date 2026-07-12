@@ -117,7 +117,7 @@ function ensureOverlayStyles() {
       user-select: none;
     }
     .vardict-glass--compact .vardict-glass-inner {
-      padding: 20px;
+      padding: 14px 18px;
     }
     .vardict-heading {
       font-size: 17px;
@@ -688,7 +688,7 @@ function showPenaltyPredict(shootout, done) {
 }
 
 function showGoalMoment(moment, done) {
-  const { el, content } = makeCard();
+  const { el, content } = makeCard({ compact: true });
   overlayEl = el;
 
   div(content, moment.text, {
@@ -955,14 +955,14 @@ function enableDrag(el) {
 }
 
 function makeCard(options) {
+  const compact = options && options.compact;
   const draggable = !(options && options.draggable === false);
   const el = document.createElement("div");
-  el.className = "vardict-glass";
+  el.className = compact ? "vardict-glass vardict-glass--compact" : "vardict-glass";
   Object.assign(el.style, {
     position: "fixed",
     zIndex: "2147483647",
-    width: "360px",
-    height: "260px",
+    width: "340px",
     borderRadius: "12px",
     overflow: "hidden",
     fontFamily: "-apple-system, system-ui, sans-serif",
@@ -972,11 +972,8 @@ function makeCard(options) {
   const content = document.createElement("div");
   content.className = "vardict-glass-inner";
   Object.assign(content.style, {
-    padding: "20px",
-    width: "100%",
-    height: "100%",
-    boxSizing: "border-box",
-    overflow: "auto"
+    padding: compact ? "14px 18px" : "18px 20px",
+    boxSizing: "border-box"
   });
   el.appendChild(content);
   if (draggable) enableDrag(el);
