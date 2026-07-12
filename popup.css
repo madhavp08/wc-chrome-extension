@@ -191,3 +191,15 @@ body {
   transform: scale(0.98);
   background: #1a1a1a;
 }
+
+.dev-status {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #aaaaaa;
+  text-align: center;
+}
+
+.dev-status[hidden] {
+  display: none;
+}

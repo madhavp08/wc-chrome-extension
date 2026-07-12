@@ -1,5 +1,6 @@
 const checkbox = document.getElementById("enabled");
 const devRoot = document.getElementById("dev-root");
+const devStatus = document.getElementById("dev-status");
 const tabsEl = document.getElementById("tabs");
 const panelMain = document.getElementById("panel-main");
 const panelGames = document.getElementById("panel-games");
@@ -8,6 +9,17 @@ const devMode = typeof DEV_MODE !== "undefined" && DEV_MODE;
 
 let currentGameId = null;
 let liveGames = [];
+
+function setDevStatus(text) {
+  if (!devStatus) return;
+  if (!text) {
+    devStatus.hidden = true;
+    devStatus.textContent = "";
+    return;
+  }
+  devStatus.hidden = false;
+  devStatus.textContent = text;
+}
 
 function setViewerTabAndEnable() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -114,15 +126,32 @@ function refreshGamesTab() {
 }
 
 function sendPreview(kind) {
+  setDevStatus("");
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const tab = tabs[0];
-    if (!tab || !tab.id) return;
-    const url = tab.url || "";
-    if (url.startsWith("chrome://") || url.startsWith("chrome-extension://") || url.startsWith("edge://")) {
+    if (!tab || !tab.id) {
+      setDevStatus("No active tab.");
       return;
     }
-    chrome.tabs.sendMessage(tab.id, { type: "preview", kind }, (res) => {
-      if (chrome.runtime.lastError || !res || !res.ok) return;
+    const url = tab.url || "";
+    if (
+      url.startsWith("chrome://") ||
+      url.startsWith("chrome-extension://") ||
+      url.startsWith("edge://") ||
+      url.startsWith("about:")
+    ) {
+      setDevStatus("Open a normal webpage first.");
+      return;
+    }
+    chrome.tabs.sendMessage(tab.id, { type: "preview", kind }, { frameId: 0 }, (res) => {
+      if (chrome.runtime.lastError) {
+        setDevStatus("Refresh the page, then try again.");
+        return;
+      }
+      if (!res || !res.ok) {
+        setDevStatus("Preview failed. Refresh the page and retry.");
+        return;
+      }
       window.close();
     });
   });

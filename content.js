@@ -1066,13 +1066,18 @@ function renderBar(body, yes, no, total) {
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (!msg || msg.type !== "preview") return;
+  if (!isOverlayHost()) return;
   sendResponse({ ok: runPreview(msg.kind) });
   return true;
 });
 
 function runPreview(kind) {
   if (typeof DEV_MODE === "undefined" || !DEV_MODE) return false;
-  if (!isOverlayHost() || overlayEl || busy || gamePickerOpen) return false;
+  if (!isOverlayHost()) return false;
+
+  if (overlayEl) clearOverlay();
+  busy = false;
+  gamePickerOpen = false;
 
   if (kind === "vote") {
     busy = true;
