@@ -77,8 +77,11 @@ into the listing's privacy policy field.
 
 ## Pre-submission checklist
 
-- [ ] `$5` Chrome Web Store developer account registered
-- [ ] `config.js` in release zip with `DEV_MODE: false` and production Supabase values
-- [ ] Privacy policy hosted at a public HTTPS URL
-- [ ] Supabase `active_polls` SQL and Edge Function deployed (multi-league live list)
-- [ ] Fresh extension zip (exclude `.git`, `config.example.js`, dev files)
+- [x] `$5` Chrome Web Store developer account registered (you)
+- [x] `config.js` in release zip with `DEV_MODE: false` and production Supabase values
+- [x] Fresh extension zip: `dist/vardict-1.0.0.zip` (runtime files only)
+- [x] Edge Function `refwatch-events` redeployed (multi-league + World Cup)
+- [ ] Run `supabase/sql/vote_breakdown.sql` in the Supabase SQL editor
+- [ ] Privacy policy hosted at a public HTTPS URL (`docs/privacy.html` ready; enable GitHub Pages or host elsewhere)
+- [ ] At least one store screenshot (1280×800 or 640×400)
+- [ ] Submit item in Chrome Web Store Developer Dashboard using `store/PASTE.md`
