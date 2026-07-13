@@ -72,7 +72,6 @@ into the listing's privacy policy field.
 
 ## Assets still needed before submission
 
-- Store icon 128×128 (manifest also uses 16×48) — new logo pending.
 - At least one screenshot at 1280×800 or 640×400 (toolbar popup + in-page overlay;
   capture a Valid/Invalid vote, vote counts, and results bar if possible).
 
