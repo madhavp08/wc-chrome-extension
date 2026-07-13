@@ -2,7 +2,7 @@
 
 **Vote on controversial calls in real time.**
 
-VARdict is a lightweight Chrome extension for live football/soccer matches. Turn it on once, and it follows the game for you: when the referee shows a card or goes to VAR, a small poll appears on the page you already have open so you can say whether the call was Valid or Invalid. After a short shared window, everyone sees the same community split. If you wander off to another tab, you still get goal alerts and those community results without being asked to vote. When the match reaches a penalty shootout, you predict each team’s five kicks with a simple circle UI, then see what the crowd thinks.
+VARdict is a lightweight Chrome extension for live football/soccer matches. Turn it on once, and it follows the game for you: when the referee shows a card or goes to VAR, a small poll appears on the page you already have open so you can weigh in. After a short shared window, everyone sees the same community split. If you wander off to another tab, you still get goal alerts and those community results without being asked to vote. When the match reaches a penalty shootout, you predict each team’s five kicks with a simple circle UI, then see what the crowd thinks.
 
 The product is deliberately narrow. You do not manage modes, dashboards, or accounts. You flip **VARdict** on or off. Everything else — match selection, watching vs away behavior, synced timing, results, penalties, and shutting itself off when the *whole* game is over — is handled automatically.
 
@@ -14,7 +14,7 @@ Built with plain JavaScript, HTML, and CSS. Manifest V3. No frameworks, no bundl
 
 ## Why it exists
 
-Live football/soccer is full of moments where half the room disagrees with the referee. Cards and VAR reviews are the calls people argue about, and they are also the events affordable live feeds can report reliably. Individual fouls and commentary are not. VARdict turns those moments into a quick, anonymous Valid/Invalid pulse shared across fans who happen to have the extension on during the same fixture.
+Live football/soccer is full of moments where half the room disagrees with the referee. Cards and VAR reviews are the calls people argue about, and they are also the events affordable live feeds can report reliably. Individual fouls and commentary are not. VARdict turns those moments into a quick, anonymous fan pulse shared across people who have the extension on during the same fixture.
 
 It is designed for match-day viewing sessions: someone has a stream open, someone else is half-watching while browsing, and both still want a sense of what “the room” thinks when controversy hits.
 
@@ -25,7 +25,7 @@ Click the toolbar icon. You get a single large **VARdict** toggle. No slogan, no
 - **On** — VARdict starts following a live match. The tab you were on when you turned it on becomes your *watching* tab.
 - **Off** — Everything clears: selected match, watching-tab binding, queues, and pending alerts. Turn it on again later to start fresh.
 
-When the match is fully finished, VARdict turns itself off so you are not left with a stale fixture stuck in storage.
+When several matches are live at once, the popup also shows a **Games** tab so you can switch fixtures without digging through the page. When the match is fully finished, VARdict turns itself off so you are not left with a stale fixture stuck in storage.
 
 ## Watching tab vs away tab
 
@@ -33,7 +33,7 @@ You are never asked to pick a mode. That distinction is inferred from which tab 
 
 **Watching tab** (the tab active when you flipped VARdict on):
 
-- Card and VAR events open a Valid/Invalid vote overlay.
+- Card and VAR events open a vote overlay (**Valid** / **Invalid**).
 - After you vote (or the window ends), you get community results for that question at the shared time.
 - You are assumed to be seeing the match, so routine goal toasts are not the focus here.
 
@@ -41,10 +41,10 @@ You are never asked to pick a mode. That distinction is inferred from which tab 
 
 - No vote prompts for cards or VAR.
 - Short goal alerts when the API reports a goal.
-- Community Valid/Invalid results for cards and VAR at the same shared clock as watching users.
+- Community results for cards and VAR at the same shared clock as watching users.
 - Same penalty-shootout prediction UI when the match reaches pens.
 
-So if you enable VARdict on your stream tab, then open Twitter or email in another tab, that other tab behaves like a lightweight moments feed: goals and crowd results, not foul polls interrupting you.
+So if you enable VARdict on your stream tab, then open another site in a second tab, that other tab behaves like a lightweight moments feed: goals and crowd results, not foul polls interrupting you.
 
 Only the visible tab runs the sync/overlay loop. Hidden tabs stay quiet until you come back.
 
@@ -55,7 +55,7 @@ VARdict follows live fixtures from these competitions (via the live API proxy):
 World Cup, Premier League, La Liga, Bundesliga, Serie A, Ligue 1, Champions League, European Championship (Euros), and Copa America.
 
 - **One live match** — selected automatically.
-- **Several live matches** — an in-page picker asks which fixture to follow (labels include the competition name). That choice sticks until you turn VARdict off (or the match ends and VARdict shuts down).
+- **Several live matches** — an in-page picker asks which fixture to follow (labels include the competition name). You can also switch from the popup **Games** tab. That choice sticks until you turn VARdict off (or the match ends and VARdict shuts down).
 - **No live matches** — nothing to show until something goes live.
 
 ## What appears on the page
@@ -85,7 +85,7 @@ Totals include a small **deterministic fake-vote pad** so early crowds and quiet
 
 ### Goals (away tabs)
 
-Goals produce a compact toast (“Goal · 67' — Player (Team)”) for a few seconds. During a penalty shootout those goal spam events are suppressed in favor of the shootout UI.
+Goals produce a compact toast (for example, `Goal for Player Team, 67'.`) for a few seconds. During a penalty shootout those goal spam events are suppressed in favor of the shootout UI.
 
 ### Penalty shootouts
 
@@ -101,7 +101,7 @@ Both watching and away tabs get this flow. It replaces the useless stream of ind
 
 ### Moving overlays
 
-In-page cards (votes, goals, results, penalties) can be dragged. The position is remembered in `chrome.storage.local` so the next overlay opens where you left it. The toolbar popup itself is not draggable — it stays a simple on/off control.
+In-page cards (votes, goals, results, penalties) can be dragged. The position is remembered in `chrome.storage.local` so the next overlay opens where you left it. The toolbar popup itself is not draggable — it stays a simple on/off control (plus Games when needed).
 
 ### Fullscreen
 
@@ -158,13 +158,13 @@ This section is for setting up, configuring, and extending the extension.
 
 | Piece | Role |
 | --- | --- |
-| `popup.html` / `popup.js` / `popup.css` | Toolbar UI: on/off only (plus optional DEV previews). |
+| `popup.html` / `popup.js` / `popup.css` | Toolbar UI: on/off toggle, Games tab when multiple fixtures are live, optional DEV previews. |
 | `content.js` | In-page overlays, queues, drag position, fullscreen hosting, sync tick on the visible overlay host. |
 | `background.js` | Service worker: live fixture discovery, event cursor, poll registration, votes, breakdowns, penalties, match-over shutdown, watching/away presence. |
 | `config.js` | Local secrets and tunables (gitignored). Copy from `config.example.js`. |
 | `manifest.json` | MV3: `storage`, `activeTab`, host access, content script on `<all_urls>` with `all_frames: true`. |
-| `supabase/functions/refwatch-events/` | Edge Function proxy to API-Football. |
-| `icons/` | Extension icons. |
+| `supabase/functions/refwatch-events/` | Edge Function proxy to API-Football (`LIVE_LEAGUES`). |
+| `icons/` | Extension icons (referee raising a yellow card; 16 / 48 / 128). |
 | `store/` | Chrome Web Store listing copy and privacy notes (not required at runtime). |
 
 There is no build pipeline. Load the folder unpacked, or zip the runtime files for the store.
@@ -198,6 +198,7 @@ There is no build pipeline. Load the folder unpacked, or zip the runtime files f
 | --- | --- | --- |
 | `sync` | content → background | Heartbeat; returns polls, goals, presence, optional penalty payload / game picker / matchOver. |
 | `selectGame` | content → background | Persist chosen fixture when multiple are live. |
+| `listLiveGames` | popup → background | Populate the popup Games tab. |
 | `vote` | content → background | Insert Valid/Invalid for a card/VAR question. |
 | `breakdown` | content → background | Aggregate counts (+ fake pad) for a question. |
 | `penaltyVote` | content → background | Insert ten Goal/Miss rows (5 home + 5 away shots). |
@@ -233,8 +234,8 @@ create policy "anon can insert votes"
   to anon
   with check (true);
 
--- Aggregates only, so the insert-only key can read a Valid/Invalid (or Goal/Miss)
--- breakdown without exposing individual rows.
+-- Aggregates only, so the insert-only key can read Valid/Invalid (or Goal/Miss)
+-- totals without exposing individual rows. Column names yes/no are legacy RPC shape.
 create or replace function vote_breakdown(q text)
 returns table(total bigint, yes bigint, no bigint)
 language sql
@@ -296,7 +297,7 @@ grant execute on function open_poll(bigint, text) to anon;
 grant execute on function active_polls_for_fixture(bigint) to anon;
 ```
 
-If you already deployed an older `vote_breakdown` that counted `Yes`/`No`, replace the function with the version above so Valid/Invalid and Goal/Miss aggregate correctly.
+If you already deployed an older `vote_breakdown` that only counted legacy choice strings, replace the function with the version above so Valid/Invalid and Goal/Miss aggregate correctly.
 
 Penalty predictions reuse the same `votes` table: each shot is stored as its own question (`Penalty {fixtureId} · {team} · shot {n}`) with choice `Goal` or `Miss`. No extra tables are required.
 
@@ -316,7 +317,11 @@ Optional hardening — only allow callers that send your publishable key:
 supabase secrets set ALLOWED_APIKEY=your-supabase-publishable-key --project-ref YOUR_REF
 ```
 
-Live competitions are hard-coded inside `supabase/functions/refwatch-events/index.ts` as hyphen-separated API-Football league IDs (`LIVE_LEAGUES`). Current set:
+Live competitions are hard-coded inside `supabase/functions/refwatch-events/index.ts` as hyphen-separated API-Football league IDs:
+
+```text
+LIVE_LEAGUES = "1-39-140-78-135-61-2-4-9"
+```
 
 | Competition | League ID |
 | --- | --- |
@@ -384,13 +389,13 @@ const EVENT_TYPES = {
 const FAKE_VOTES = { min: 18, max: 36 };
 ```
 
-`getBreakdown` adds a deterministic pad (hash of the question → total and Valid share inside that range). Used for normal polls and each penalty shot question so community UI looks populated with few real users.
+`getBreakdown` adds a deterministic pad (hash of the question → total and Valid/Goal share inside that range). Used for normal polls and each penalty shot question so community UI looks populated with few real users.
 
 ### Poll timing
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `POLL.options` | `["Valid","Invalid"]` | Vote labels. |
+| `POLL.options` | `["Valid","Invalid"]` | Vote labels shown on card/VAR overlays. |
 | `POLL.syncSeconds` | `3` | Content sync interval. |
 | `POLL.decisionSeconds` | `20` | Vote window from shared `opened_at`. |
 | `POLL.confirmSeconds` | `5` | Auto-submit delay after a pick. |
@@ -457,7 +462,7 @@ zip -r dist/vardict-1.0.0.zip manifest.json popup.html popup.css popup.js \
   content.js background.js config.js icons
 ```
 
-This excludes `.git`, `supabase/`, `store/`, Cursor rules, and local junk. Store listing copy and privacy text live under `store/` for the submission form — they are not loaded by the extension at runtime.
+This excludes `.git`, `supabase/`, `store/`, Cursor rules, and local junk. Store listing copy and privacy text live under `store/` for the submission form — they are not loaded by the extension at runtime. Keep store summary and manifest description aligned with **Vote on controversial calls in real time.**
 
 Bump `version` in `manifest.json` whenever you upload a new package.
 
