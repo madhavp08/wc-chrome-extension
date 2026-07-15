@@ -274,31 +274,59 @@ function ensureOverlayStyles() {
     }
     .vardict-dir-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 10px 12px;
+      align-items: stretch;
+    }
+    .vardict-dir-cell {
+      min-height: 48px;
+    }
+    .vardict-dir-cell--empty {
+      pointer-events: none;
     }
     .vardict-btn--dir {
-      min-height: 42px;
-      padding: 10px 8px;
-      font-size: 13px;
+      width: 100%;
+      min-height: 48px;
+      padding: 10px 6px;
+      font-size: 12px;
+      line-height: 1.2;
       text-align: center;
       box-sizing: border-box;
     }
-    .vardict-dir-grid .vardict-btn--dir:nth-child(3) {
-      grid-column: 1 / -1;
-    }
     .vardict-dir-results {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 10px 12px;
       margin-top: 4px;
     }
-    .vardict-dir-result-row {
+    .vardict-dir-result-cell {
+      min-height: 48px;
       display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 14px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 8px 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    .vardict-dir-result-cell--empty {
+      border: none;
+      min-height: 0;
+      padding: 0;
+    }
+    .vardict-dir-result-name {
+      font-size: 11px;
       font-weight: 600;
+      color: #cccccc;
+    }
+    .vardict-dir-result-pct {
+      font-size: 15px;
+      font-weight: 700;
     }
   `;
   document.documentElement.appendChild(style);
@@ -720,6 +748,18 @@ function penaltyKickLabel(question) {
   return "Penalty kick";
 }
 
+const PENALTY_DIR_LAYOUT = [
+  "Top Left",
+  null,
+  "Top Right",
+  null,
+  "Middle",
+  null,
+  "Bottom Left",
+  null,
+  "Bottom Right"
+];
+
 function showPenaltyDirection(kick, voteEnd, done, options) {
   const preview = Boolean(options && options.preview);
   let selected = null;
@@ -743,19 +783,26 @@ function showPenaltyDirection(kick, voteEnd, done, options) {
   const grid = document.createElement("div");
   grid.className = "vardict-dir-grid";
   const buttons = [];
-  PENALTY_DIRECTIONS.forEach((label) => {
-    const btn = makeButton("vardict-btn--dir");
-    btn.textContent = label;
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (finalized) return;
-      selected = label;
-      buttons.forEach((b) => b.classList.toggle("vardict-btn--selected", b === btn));
-      note.textContent = preview ? "Preview results…" : "Sending…";
-      finalize(true);
-    });
-    grid.appendChild(btn);
-    buttons.push(btn);
+  PENALTY_DIR_LAYOUT.forEach((label) => {
+    const cell = document.createElement("div");
+    cell.className = label
+      ? "vardict-dir-cell"
+      : "vardict-dir-cell vardict-dir-cell--empty";
+    if (label) {
+      const btn = makeButton("vardict-btn--dir");
+      btn.textContent = label;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (finalized) return;
+        selected = label;
+        buttons.forEach((b) => b.classList.toggle("vardict-btn--selected", b === btn));
+        note.textContent = preview ? "Preview results…" : "Sending…";
+        finalize(true);
+      });
+      cell.appendChild(btn);
+      buttons.push(btn);
+    }
+    grid.appendChild(cell);
   });
   content.appendChild(grid);
 
@@ -773,18 +820,30 @@ function showPenaltyDirection(kick, voteEnd, done, options) {
   function showDirectionResults(choices) {
     content.textContent = "";
     div(content, "Community picks", { className: "vardict-heading" });
+    const byChoice = new Map();
+    (choices || []).forEach((row) => {
+      if (row && row.choice != null) byChoice.set(row.choice, row);
+    });
     const list = document.createElement("div");
     list.className = "vardict-dir-results";
-    (choices || []).forEach((row) => {
-      const line = document.createElement("div");
-      line.className = "vardict-dir-result-row";
+    PENALTY_DIR_LAYOUT.forEach((label) => {
+      const cell = document.createElement("div");
+      if (!label) {
+        cell.className = "vardict-dir-result-cell vardict-dir-result-cell--empty";
+        list.appendChild(cell);
+        return;
+      }
+      cell.className = "vardict-dir-result-cell";
+      const row = byChoice.get(label) || { choice: label, percent: 0 };
       const name = document.createElement("span");
+      name.className = "vardict-dir-result-name";
       name.textContent = row.choice;
       const pct = document.createElement("span");
+      pct.className = "vardict-dir-result-pct";
       pct.textContent = `${row.percent}%`;
-      line.appendChild(name);
-      line.appendChild(pct);
-      list.appendChild(line);
+      cell.appendChild(name);
+      cell.appendChild(pct);
+      list.appendChild(cell);
     });
     content.appendChild(list);
     trackTimeout(() => {
