@@ -400,11 +400,12 @@ function ensureOverlayStyles() {
     .vardict-btn--dir {
       width: 100%;
       min-height: 48px;
-      padding: 10px 6px;
-      font-size: 12px;
-      line-height: 1.2;
+      padding: 10px 4px;
+      font-size: 11px;
+      line-height: 1.15;
       text-align: center;
       box-sizing: border-box;
+      white-space: nowrap;
     }
     .vardict-dir-results {
       display: grid;
@@ -435,6 +436,7 @@ function ensureOverlayStyles() {
       font-size: 11px;
       font-weight: 600;
       color: #cccccc;
+      white-space: nowrap;
     }
     .vardict-dir-result-pct {
       font-size: 15px;
@@ -892,10 +894,13 @@ function showPenaltyDirection(kick, voteEnd, done, options) {
   const resultsMs = (POLL.penaltyResultsSeconds || 8) * 1000;
 
   div(content, penaltyKickLabel(kick.question), {
-    fontSize: "18px",
+    fontSize: "16px",
     fontWeight: "700",
-    lineHeight: "1.3",
-    marginBottom: "8px"
+    lineHeight: "1.25",
+    marginBottom: "8px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
   });
   div(content, "Where will they put it?", {
     className: "vardict-muted",
@@ -1257,10 +1262,13 @@ function showPoll(poll, voteEnd, options) {
   const msLeft = Math.max(1000, voteEndMs - Date.now());
 
   div(content, poll.question, {
-    fontSize: "18px",
+    fontSize: "16px",
     fontWeight: "700",
-    lineHeight: "1.3",
-    marginBottom: "16px"
+    lineHeight: "1.25",
+    marginBottom: "16px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis"
   });
 
   const row = div(content, "", { display: "flex", gap: "10px" });
@@ -1445,7 +1453,7 @@ function showBreakdown(question, done) {
 
 function applyOverlayPosition(el) {
   if (overlayOffset) {
-    const maxLeft = Math.max(0, window.innerWidth - 340);
+    const maxLeft = Math.max(0, window.innerWidth - 380);
     const maxTop = Math.max(0, window.innerHeight - 80);
     const left = Math.min(maxLeft, Math.max(0, overlayOffset.left));
     const top = Math.min(maxTop, Math.max(0, overlayOffset.top));
@@ -1535,7 +1543,7 @@ function makeCard(options) {
   Object.assign(el.style, {
     position: "fixed",
     zIndex: "2147483647",
-    width: "340px",
+    width: "380px",
     borderRadius: "12px",
     overflow: "hidden",
     fontFamily: "-apple-system, system-ui, sans-serif",
